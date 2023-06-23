@@ -30,7 +30,7 @@ class App3 {
       far: 20.0,
       x: 0.0,
       y: 1.0,
-      z: 10.0,
+      z: 5.0,
       lookAt: new THREE.Vector3(0.0, 0.0, 0.0),
     };
   }
@@ -62,7 +62,7 @@ class App3 {
   static get AMBIENT_LIGHT_PARAM() {
     return {
       color: 0xffffff,
-      intensity: 0.2,
+      intensity: 1.0,
     };
   }
   /**
@@ -153,6 +153,116 @@ class App3 {
     /**
      * リサイズイベント
      */
-    window.addEventListener("resize", () => {});
+    window.addEventListener(
+      "resize",
+      () => {
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.camera.aspect = window.innerWidth / window.innerHeight;
+        this.camera.updateProjectionMatrix();
+      },
+      false
+    );
+  }
+
+  /**
+   * アセットのロード
+   */
+  async load() {
+    const self = this;
+    const earthModelPath = "./assets/earth.glb";
+    const earthModel = await self.loadModel(earthModelPath);
+    this.earth = earthModel.scene;
+  }
+
+  /**
+   * モデルを読み込む関数
+   * @param {string} modelPath 読み込むモデルのパス
+   * @returns 読み込んだモデル
+   */
+  async loadModel(modelPath) {
+    return new Promise((resolve) => {
+      const loader = new GLTFLoader();
+      loader.load(modelPath, (data) => {
+        resolve(data);
+      });
+    });
+  }
+
+  /**
+   * 初期化
+   */
+  init() {
+    // レンダラー
+    this.renderer = new THREE.WebGLRenderer();
+    this.renderer.setClearColor(
+      new THREE.Color(App3.RENDERER_PARAM.clearColor)
+    );
+    this.renderer.setSize(
+      App3.RENDERER_PARAM.width,
+      App3.RENDERER_PARAM.height
+    );
+    this.renderer.physicallyCorrectLights = true;
+    this.renderer.outputEncoding = THREE.sRGBEncoding;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.physicallyCorrectLights = true;
+    this.renderer.outputEncoding = THREE.sRGBEncoding;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+
+    const wrapper = document.querySelector("#webgl");
+    wrapper.appendChild(this.renderer.domElement);
+
+    // シーンとフォグ
+    this.scene = new THREE.Scene();
+    this.scene.fog = new THREE.Fog(
+      App3.FOG_PARAM.fogColor,
+      App3.FOG_PARAM.fogNear,
+      App3.FOG_PARAM.fogFar
+    );
+
+    // カメラ
+    this.camera = new THREE.PerspectiveCamera(
+      App3.CAMERA_PARAM.fovy,
+      App3.CAMERA_PARAM.aspect,
+      App3.CAMERA_PARAM.near,
+      App3.CAMERA_PARAM.far
+    );
+    this.camera.position.set(
+      App3.CAMERA_PARAM.x,
+      App3.CAMERA_PARAM.y,
+      App3.CAMERA_PARAM.z
+    );
+    this.camera.lookAt(App3.CAMERA_PARAM.lookAt);
+
+    // ディレクショナルライト
+    this.directionalLight = new THREE.DirectionalLight(
+      App3.DIRECTIONAL_LIGHT_PARAM.color,
+      App3.DIRECTIONAL_LIGHT_PARAM.intensity
+    );
+    this.scene.add(this.directionalLight);
+
+    //アンビエントライト
+    this.ambientLight = new THREE.AmbientLight(
+      App3.AMBIENT_LIGHT_PARAM.color,
+      App3.AMBIENT_LIGHT_PARAM.intensity
+    );
+    this.scene.add(this.ambientLight);
+
+    // 3dmodelをシーンに追加
+    this.scene.add(this.earth);
+
+    // OrbitControls
+    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+
+    // GUI
+  }
+
+  /**
+   * 描画処理
+   */
+  render() {
+    requestAnimationFrame(this.render);
+    this.controls.update();
+
+    this.renderer.render(this.scene, this.camera);
   }
 }
