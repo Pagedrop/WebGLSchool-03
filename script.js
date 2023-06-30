@@ -84,6 +84,16 @@ class App3 {
     };
   }
 
+  // 飛行機と地球の距離
+  static get PLANE_DISTANCE() {
+    return 1.2;
+  }
+
+  // カメラと飛行機の距離
+  static get CAMEARA_DISTANCE() {
+    return 2;
+  }
+
   /**
    * constructor
    */
@@ -102,10 +112,16 @@ class App3 {
     this.earthMaterial;
 
     this.plane;
+    this.planeBody;
+    this.planePropela;
     this.planeGeometry;
     this.planeMaterial;
+    this.planeDirection;
 
-    this.isDown = false;
+    this.planeGourp;
+
+    this.frontHelper;
+    this.frontVector = this.isDown = false;
 
     this.clock = new THREE.Clock();
 
@@ -169,9 +185,15 @@ class App3 {
    */
   async load() {
     const self = this;
-    const earthModelPath = "./assets/earth.glb";
+    const earthModelPath = "./assets/earth2.glb";
+    const planeBodyModelPath = "./assets/toy-plane-body.glb";
+    const planePropelaModelPath = "./assets/toy-plane-propela.glb";
     const earthModel = await self.loadModel(earthModelPath);
+    const planeBodyModel = await self.loadModel(planeBodyModelPath);
+    const planePropelaModel = await self.loadModel(planePropelaModelPath);
     this.earth = earthModel.scene;
+    this.planeBody = planeBodyModel.scene;
+    this.planePropela = planePropelaModel.scene;
   }
 
   /**
@@ -247,11 +269,35 @@ class App3 {
     );
     this.scene.add(this.ambientLight);
 
-    // 3dmodelをシーンに追加
+    // 3dmodelを調整
+    this.planeBody.scale.set(0.1, 0.1, 0.1);
+    this.planeBody.rotation.y = Math.PI / 2;
+    this.planePropela.scale.set(0.1, 0.1, 0.1);
+
+    this.planeGourp = new THREE.Group();
+    this.planeGourp.add(this.planeBody);
+    this.planeGourp.add(this.planePropela);
+
+    // planeの進行方向の初期値
+    this.planeDirection = new THREE.Vector3(0.0, 1.0, 0.0).normalize();
+
+    // シーンに追加
     this.scene.add(this.earth);
+    this.scene.add(this.planeGourp);
 
     // OrbitControls
-    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+    // this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+
+    // ヘルパー
+    const cameraHelper = new THREE.CameraHelper(this.camera);
+    this.scene.add(cameraHelper);
+
+    this.frontHelper = new THREE.ArrowHelper(
+      this.frontVector,
+      new THREE.Vector3(0, 0, 0),
+      10
+    );
+    // this.scene.add(this.frontHelper);
 
     // GUI
   }
@@ -261,8 +307,51 @@ class App3 {
    */
   render() {
     requestAnimationFrame(this.render);
-    this.controls.update();
+    // this.controls.update();
 
+    this.planePropela.rotation.y += 0.1;
+
+    const time = this.clock.getElapsedTime();
+    const sin = Math.sin(time);
+    const cos = Math.cos(time);
+
+    // 現在の進行方向を変数に変数にほじ
+    const previousDirection = this.planeDirection.clone();
+
+    //現在の位置を保持
+    const oldPosition = this.planeGourp.position.clone();
+
+    this.planeGourp.position.set(
+      sin * App3.PLANE_DISTANCE,
+      0.0,
+      cos * App3.PLANE_DISTANCE
+    );
+    // アニメーション後の位置を取得
+    const newPosition = this.planeGourp.position.clone();
+    // 前の位置 - 現在の位置ですすんでいる方向のベクトルを算出
+    const frontVector = newPosition.clone().sub(oldPosition);
+    // ノーマライズ
+    frontVector.normalize();
+    this.planeDirection = frontVector.clone();
+    // this.frontHelper.setDirection(frontVector);
+
+    const normalAxis = new THREE.Vector3().crossVectors(
+      previousDirection,
+      frontVector
+    );
+    normalAxis.normalize();
+
+    const cos2 = previousDirection.dot(frontVector);
+    const radians = Math.acos(cos2);
+    const qtn = new THREE.Quaternion().setFromAxisAngle(normalAxis, radians);
+    this.planeGourp.quaternion.premultiply(qtn);
+
+    const backVector = frontVector.clone().negate();
+    backVector.multiplyScalar(App3.CAMEARA_DISTANCE);
+    const cameraPosition = backVector.add(this.planeGourp.position);
+    this.camera.position.copy(cameraPosition);
+    this.camera.up.copy(this.planeGourp.position); // vector3(0,1,0);
+    this.camera.lookAt(this.planeGourp.position);
     this.renderer.render(this.scene, this.camera);
   }
 }
