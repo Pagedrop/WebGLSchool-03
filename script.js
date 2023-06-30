@@ -286,18 +286,9 @@ class App3 {
     this.scene.add(this.planeGourp);
 
     // OrbitControls
-    // this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
 
     // ヘルパー
-    const cameraHelper = new THREE.CameraHelper(this.camera);
-    this.scene.add(cameraHelper);
-
-    this.frontHelper = new THREE.ArrowHelper(
-      this.frontVector,
-      new THREE.Vector3(0, 0, 0),
-      10
-    );
-    // this.scene.add(this.frontHelper);
 
     // GUI
   }
